@@ -12,16 +12,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ENV LD_LIBRARY_PATH=/opt/hpcx/ucx/lib:$LD_LIBRARY_PATH
 
 # system packages 
-# (Removed libopenmpi-dev to stop it from installing conflicting libucc/libucx system libraries)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+    (apt-get install -y --no-install-recommends \
     git cmake pkg-config build-essential gfortran \
     libgeos-dev sqlite3 \
     libjpeg-dev libpng-dev libtiff-dev \
     libopenblas0-pthread liblapack-dev libhdf5-dev libomp-dev \
     gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad gstreamer1.0-libav \
+    gstreamer1.0-plugins-bad gstreamer1.0-libav || \
+    (sed -i -e '/systemd-sysusers/s/\.conf$/.conf || true/' /var/lib/dpkg/info/*.postinst && apt-get install -y -f)) \
  && rm -rf /var/lib/apt/lists/*
-
+ 
 WORKDIR /app
 
 COPY requirements.txt .
