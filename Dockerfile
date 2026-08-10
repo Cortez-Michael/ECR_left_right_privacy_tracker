@@ -19,7 +19,8 @@ RUN apt-get update && \
     libjpeg-dev libpng-dev libtiff-dev \
     libopenblas0-pthread liblapack-dev libhdf5-dev libomp-dev \
     gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
-    gstreamer1.0-plugins-bad gstreamer1.0-libav || \
+    gstreamer1.0-plugins-bad gstreamer1.0-libav \
+    libxcb1 libxext6 libsm6 libxrender1 || \
     (sed -i -e '/systemd-sysusers/s/\.conf$/.conf || true/' /var/lib/dpkg/info/*.postinst && apt-get install -y -f)) \
  && rm -rf /var/lib/apt/lists/*
  
