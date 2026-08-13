@@ -1,6 +1,7 @@
 # pywaggle handles opencv-python internally
 pywaggle[vision]==0.56.0
 
+opencv-python-headless>=4.5.0
 numpy>=1.26.4
 scipy>=1.13.1
 scikit-learn>=1.5.2
