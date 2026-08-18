@@ -1,4 +1,4 @@
-# thor (amd64, gpu) dockerfile for pedestrian-direction-tracker
+# thor (amd64/arm64, gpu) dockerfile for pedestrian-direction-tracker
 # tested on environment using nvcr.io/nvidia/pytorch:25.08-py3
 # adds pywaggle so it can run as a sage plugin
 
@@ -14,6 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ENV LD_LIBRARY_PATH=/opt/hpcx/ucx/lib:$LD_LIBRARY_PATH
 
 # system packages (with QEMU arm64 file-lock bypass for systemd)
+# (Removed libopenmpi-dev to stop it from installing conflicting libucc/libucx system libraries)
 RUN apt-get update && \
     (apt-get install -y --no-install-recommends \
     git cmake pkg-config build-essential gfortran \
@@ -25,20 +26,14 @@ RUN apt-get update && \
     (sed -i -e '/systemd-sysusers/s/\.conf$/.conf || true/' /var/lib/dpkg/info/*.postinst && apt-get install -y -f)) \
  && rm -rf /var/lib/apt/lists/*
 
-# Runtime libs OpenCV needs. libxcb1 (+X11 companions) provides libxcb.so.1,
-# which the Qt-bundled GUI OpenCV wheel load-time links. 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libgl1 libglib2.0-0 libxcb1 libx11-6 libxext6 libxrender1 && \
-    rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
 
 COPY requirements.txt .
 
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
-RUN python -m pip install --no-cache-dir onnxslim onnxruntime
+# Lock numpy to <2.0.0 to prevent PyTorch and ONNX C-extension ABI crashes
+RUN python -m pip install --no-cache-dir onnxslim onnxruntime "numpy<2.0.0"
 RUN python -m pip install --no-cache-dir --no-deps ultralytics
 
 # ------------------------------------
@@ -46,7 +41,7 @@ RUN python -m pip install --no-cache-dir --no-deps ultralytics
 # ------------------------------------
 RUN mkdir -p /app/models
 
-# Add the BoT-SORT ReID model to prevent runtime download crashes
+# Add the BoT-SORT ReID model to prevent runtime download connection errors
 ADD https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-reid.onnx /app/models/yolo26s-reid.onnx
 
 ADD https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n.pt /app/models/yolov8n.pt
@@ -60,8 +55,11 @@ ADD https://github.com/YapaLab/yolo-face/releases/download/1.0.0/yolov8n-person.
 
 COPY . .
 
+# -------------------------------------------------------------
+# ABSOLUTE LAST STEP: Force headless OpenCV so ultralytics cannot overwrite it
+# -------------------------------------------------------------
 RUN python -m pip uninstall -y opencv-python opencv-contrib-python || true \
- && python -m pip install --no-cache-dir --force-reinstall "opencv-python-headless>=4.5.0"
+ && python -m pip install --no-cache-dir --force-reinstall "opencv-python-headless>=4.10.0" "numpy<2.0.0"
 
 # default entrypoint: main.py (left/right counter).
 ENTRYPOINT ["python", "main.py"]
