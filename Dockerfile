@@ -55,6 +55,7 @@ RUN python -m pip uninstall -y opencv-python opencv-contrib-python || true \
 # ------------------------------------
 RUN mkdir -p /app/models
 
+ADD https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-reid.onnx /app/models/yolo26s-reid.onnx
 ADD https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8n.pt /app/models/yolov8n.pt
 ADD https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8s.pt /app/models/yolov8s.pt
 ADD https://github.com/ultralytics/assets/releases/download/v8.1.0/yolov8m.pt /app/models/yolov8m.pt
