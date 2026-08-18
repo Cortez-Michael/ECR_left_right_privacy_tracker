@@ -1,8 +1,6 @@
-# thor (amd64, gpu) dockerfile for pedestrian-direction-tracker
-# tested on environment using nvcr.io/nvidia/pytorch:25.08-py3
-# adds pywaggle so it can run as a sage plugin
-
-FROM nvcr.io/nvidia/pytorch:25.08-py3
+# thor (arm64, gpu) dockerfile for pedestrian-direction-tracker
+# Uses L4T (Linux for Tegra) base image for Jetson hardware compatibility
+FROM nvcr.io/nvidia/l4t-pytorch:r36.2.0-pth2.2-py3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
@@ -25,21 +23,17 @@ RUN apt-get update && \
     (sed -i -e '/systemd-sysusers/s/\.conf$/.conf || true/' /var/lib/dpkg/info/*.postinst && apt-get install -y -f)) \
  && rm -rf /var/lib/apt/lists/*
 
-# Runtime libs OpenCV needs. libxcb1 (+X11 companions) provides libxcb.so.1,
-# which the Qt-bundled GUI OpenCV wheel load-time links. 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libgl1 libglib2.0-0 libxcb1 libx11-6 libxext6 libxrender1 && \
-    rm -rf /var/lib/apt/lists/*
+# Purge any system-level GUI OpenCV that NVIDIA baked into the OS
+RUN apt-get update && apt-get remove -y python3-opencv || true && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY requirements.txt .
 
-RUN python -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
-RUN python -m pip install --no-cache-dir onnxslim onnxruntime
-RUN python -m pip install --no-cache-dir --no-deps ultralytics
+RUN python3 -m pip install --no-cache-dir onnxslim onnxruntime
+RUN python3 -m pip install --no-cache-dir --no-deps ultralytics
 
 # ------------------------------------
 # Add YOLOv8 weights for offline use
@@ -60,8 +54,11 @@ ADD https://github.com/YapaLab/yolo-face/releases/download/1.0.0/yolov8n-person.
 
 COPY . .
 
-RUN python -m pip uninstall -y opencv-python opencv-contrib-python || true \
- && python -m pip install --no-cache-dir --force-reinstall "opencv-python-headless>=4.5.0"
+# -------------------------------------------------------------
+# ABSOLUTE LAST STEP: Force headless OpenCV so ultralytics cannot overwrite it
+# -------------------------------------------------------------
+RUN python3 -m pip uninstall -y opencv-python opencv-contrib-python || true \
+ && python3 -m pip install --no-cache-dir --force-reinstall "opencv-python-headless>=4.5.0"
 
 # default entrypoint: main.py (left/right counter).
-ENTRYPOINT ["python", "main.py"]
+ENTRYPOINT ["python3", "main.py"]
